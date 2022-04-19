@@ -105,10 +105,16 @@ def fine_tuning_encoder(seat, train_loader, epochs=100):
         print(f"-> load pretrained encoder from: {path}\n")
         weights = torch.load(path, map_location=args.device)
         seat.encoder.load_state_dict(weights)
-        return seat
+        return
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(epochs):
+        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch + 1}.pt")
+        if osp.exists(path):
+            weights = torch.load(path, map_location=args.device)
+            seat.encoder.load_state_dict(weights)
+            scheduler.step()
+            continue
         pbar = tqdm(enumerate(train_loader))
         size = len(train_loader)
         sum_loss1 = 0.0
@@ -125,7 +131,6 @@ def fine_tuning_encoder(seat, train_loader, epochs=100):
             sum_loss2 += loss2
             pbar.update(1)
         scheduler.step()
-        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch+1}.pt")
         torch.save(copy.deepcopy(seat.encoder).state_dict(), path)
         print(f"-> Epoch:{epoch} l1:{1.0*sum_loss1/size} l2:{1.0*sum_loss2/size}  save model to: {path}\n")
     return seat
@@ -172,7 +177,7 @@ def main():
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=100)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

@@ -2,32 +2,50 @@
 # -*- coding:utf-8 -*-
 
 __author__ = 'homeway'
-__copyright__ = 'Copyright © 2022/01/25, homeway'
+__copyright__ = 'Copyright © 2022/04/18, homeway'
 
 
 """
 This is the implementation of paper: "SEAT: Similarity Encoder by Adversarial Training for Detecting Model Extraction Attack Queries".
 We use the pretrain model downloaded from: https://github.com/huyvnphan/PyTorch_CIFAR10
 """
+
+import random
 import numpy as np
 import os.path as osp
-import os, copy, shutil, torch, zipfile, gdown
+import os, copy, shutil, zipfile, gdown
+import torch
 import torchvision
 import torchvision.transforms as transforms
 import argparse
+import trans
 from models.vgg import vgg16_bn
 from tqdm import tqdm
 from seat import SEAT
 ROOT = osp.abspath(osp.dirname(osp.dirname(__file__)))
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=int, default=0)
+parser.add_argument("--seed", type=int, default=999999)
+parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--data_root", default=osp.join(ROOT, "datasets/data"))
 parser.add_argument("--cpkt_root", default=osp.join(ROOT, "models/ckpt"))
 args = parser.parse_args()
 args.device = torch.device(f"cuda:{args.device}")
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 
 def get_bounds(mean, std):
+    '''
+    get bound of dataset
+    :param mean: list, float
+    :param std: list, float
+    :return: list, [lower_bound, upper_bound]
+    '''
     bounds = [-1, 1]
     if type(mean) == type(()):
         c = len(mean)
@@ -74,39 +92,66 @@ def load_pretrained_encoder(arch="vgg16_bn"):
     return torch.load(target_file, map_location="cpu")
 
 
-def fine_tuning_encoder(seat, train_loader, epochs=50):
-    '''
-    for step, (x, y) in tqdm(enumerate(train_loader), desc="fine-tuning now..."):
-        loss = seat.fine_tuning(x, y)
-        print(f"-> step:{step} loss:{loss.item()}")
-    '''
-    '''
-    model = seat.encoder.to(args.device)
-    model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    '''
+def fine_tuning_encoder(seat, train_loader, epochs=100):
+    """
+    fine-tuning encoder using last layer of CNN feature maps as latent space of encoder
+    :param seat: SEAT object
+    :param train_loader:
+    :param epochs:
+    :return: None
+    """
+    path = osp.join(ROOT, f"models/ckpt/encoder_{epochs}.pt")
+    if osp.exists(path):
+        print(f"-> load pretrained encoder from: {path}\n")
+        weights = torch.load(path, map_location=args.device)
+        seat.encoder.load_state_dict(weights)
+        return seat
 
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(epochs):
         pbar = tqdm(enumerate(train_loader))
         size = len(train_loader)
+        sum_loss1 = 0.0
+        sum_loss2 = 0.0
         for step, (x, y) in pbar:
             loss1, loss2 = seat.fine_tuning(x, y)
             pbar.set_description(
-                "Epoch{:d}: [{:d}/{:d}] loss_pos:{:.6f}+loss_neg:{:.6f}={:.6f}\t".format(
+                "-> Epoch{:d}: [{:d}/{:d}] loss_pos:{:.8f}+loss_neg:{:.8f}={:.8f}\t".format(
                     epoch, step, size,
                     loss1, loss2,
                     loss1 + loss2)
             )
+            sum_loss1 += loss1
+            sum_loss2 += loss2
             pbar.update(1)
-        # TODO: save model
-        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch}.pt")
+        scheduler.step()
+        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch+1}.pt")
         torch.save(copy.deepcopy(seat.encoder).state_dict(), path)
-        print(f"-> save model to: {path}")
+        print(f"-> Epoch:{epoch} l1:{1.0*sum_loss1/size} l2:{1.0*sum_loss2/size}  save model to: {path}\n")
+    return seat
 
 
 def evaluate_SEAT(seat, test_loader):
-    pass
+    size = len(test_loader)
+    print("-> detect benign query")
+    pbar = tqdm(enumerate(test_loader))
+    for step, (x, y) in pbar:
+        query = x.to(args.device)
+        adv_dist = seat.detect(query=query)
+        pbar.set_description(
+            f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
 
+    seat.reset()
+    adv = trans.Adv(model=copy.deepcopy(seat.encoder), bounds=seat.bounds)
+    print("\n-> detect malicious query")
+    pbar = tqdm(enumerate(test_loader))
+    for step, (x, y) in pbar:
+        x = x.to(args.device)
+        y = torch.randint(0, 10, list(y.shape)).to(args.device)
+        query = adv.pgd(x, y, eps=50./255., alpha=50./255., steps=30, random_start=True)
+        adv_dist = seat.detect(query=query)
+        pbar.set_description(
+            f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
 
 
 def main():
@@ -117,19 +162,19 @@ def main():
         except Exception as e:
             pass
 
-    """step1: load dataset"""
-    train_loader, test_loader, bounds = load_data()
+    print("""\n-> step1: load dataset""")
+    train_loader, test_loader, bounds = load_data(batch_size=args.batch_size)
 
-    """step2: load pretrained encoder"""
+    print("""\n-> step2: load pretrained encoder""")
     load_pretrained_encoder(arch="vgg16_bn")
     encoder = vgg16_bn(pretrained=True)
     encoder.to(args.device)
 
-    """step3: fine-tuning similarity encoder with contrastive loss"""
+    print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50)
 
-    """step4: evaluate similarity encoder"""
+    print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)
 
 

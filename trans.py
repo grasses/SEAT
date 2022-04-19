@@ -1,7 +1,7 @@
 import math
 import numbers
 import numpy as np
-
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -428,7 +428,6 @@ class NormalizeLayer(nn.Module):
 
 
 
-import random
 class Adv(nn.Module):
     def __init__(self, model, bounds):
         super(Adv, self).__init__()
@@ -436,9 +435,8 @@ class Adv(nn.Module):
         self.bounds = bounds
         self.device = next(model.parameters()).device
 
-    def pgd(self, images, labels, eps=0.8, alpha=25./255, random_start=False):
-        steps = random.randint(10, 15)
-
+    def pgd(self, images, labels, eps=16.0/255., alpha=10./255., steps=0, random_start=False):
+        steps = random.randint(10, 15) if steps == 0 else steps
         images = images.clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
         loss = nn.CrossEntropyLoss()
@@ -459,8 +457,7 @@ class Adv(nn.Module):
             adv_images = torch.clamp(images + delta, min=0, max=1).detach()
         return adv_images
 
-
-    def fgsm(self, images, labels, eps=0.2):
+    def fgsm(self, images, labels, eps=16.0/255.):
         images = images.clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
         loss = nn.CrossEntropyLoss()
@@ -473,10 +470,8 @@ class Adv(nn.Module):
         adv_images = torch.clamp(adv_images, min=self.bounds[0], max=self.bounds[1]).detach()
         return adv_images
 
-    def bim(self, images, labels, eps=10.0/255, alpha=5.0/255, steps=0):
-        steps = random.randint(1, 5)
-        #steps = int(min(eps*255 + 4, 1.25*eps*255))
-
+    def bim(self, images, labels, eps=10.0/255, alpha=10.0/255, steps=0):
+        steps = random.randint(5, 10) if steps == 0 else steps
         images = images.clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)
         loss = torch.nn.CrossEntropyLoss()
@@ -503,8 +498,8 @@ class Adv(nn.Module):
             images = torch.clamp(c, max=self.bounds[1]).detach()
         return images
 
-    def cw(self, images, labels, c=1e-4, kappa=0, lr=0.01):
-        steps = random.randint(100, 200)
+    def cw(self, images, labels, c=1e-4, kappa=0, lr=0.01, steps=0):
+        steps = random.randint(200, 800) if steps == 0 else steps
         self.c = c
         self.kappa = kappa
         self.steps = steps
@@ -533,7 +528,6 @@ class Adv(nn.Module):
             current_L2 = MSELoss(Flatten(adv_images),
                                  Flatten(images)).sum(dim=1)
             L2_loss = current_L2.sum()
-
             outputs = self.model(adv_images)
             f_loss = self.f(outputs, labels).sum()
             cost = L2_loss + c*f_loss
@@ -574,7 +568,6 @@ class Adv(nn.Module):
         i, _ = torch.max((1-one_hot_labels)*outputs, dim=1)
         j = torch.masked_select(outputs, one_hot_labels.bool())
         return torch.clamp(-1.0*(i-j), min=-self.kappa)
-
 
     def forward(self, images, labels, aug_index=None):
         self.device = images.device

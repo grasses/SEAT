@@ -22,7 +22,7 @@ class SEAT:
         self.history_feats = []
         self.bounds = bounds
         self.adv = trans.Adv(model=copy.deepcopy(self.encoder), bounds=self.bounds)
-        self.criterion = torch.nn.MSELoss(reduce="sum")
+        self.criterion = torch.nn.MSELoss(reduction="mean")
         self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-2, momentum=0.9, weight_decay=5e-4)
 
     def reset(self):

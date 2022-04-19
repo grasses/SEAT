@@ -437,7 +437,7 @@ class Adv(nn.Module):
         self.device = next(model.parameters()).device
 
     def pgd(self, images, labels, eps=0.8, alpha=25./255, random_start=False):
-        steps = random.randint(5, 10)
+        steps = random.randint(10, 15)
 
         images = images.clone().detach().to(self.device)
         labels = labels.clone().detach().to(self.device)

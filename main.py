@@ -74,17 +74,23 @@ def load_pretrained_encoder(arch="vgg16_bn"):
     return torch.load(target_file, map_location="cpu")
 
 
-def fine_tuning_encoder(seat, train_loader):
+def fine_tuning_encoder(seat, train_loader, epochs=50):
     '''
     for step, (x, y) in tqdm(enumerate(train_loader), desc="fine-tuning now..."):
         loss = seat.fine_tuning(x, y)
         print(f"-> step:{step} loss:{loss.item()}")
     '''
-    for step, (x, y) in enumerate(train_loader):
-        loss = seat.fine_tuning(x, y)
-        print(f"-> step:{step} loss:{loss.item()}")
-        print()
-
+    '''
+    model = seat.encoder.to(args.device)
+    model.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    '''
+    for epoch in range(epochs):
+        for step, (x, y) in enumerate(train_loader):
+            loss1, loss2 = seat.fine_tuning(x, y)
+            if step % 10 == 0:
+                print(f"-> epoch:{epoch} step:{step} loss_positive:{loss1} loss_negative:{loss2}")
+        # TODO: save model
 
 def evaluate_SEAT(seat, test_loader):
     pass

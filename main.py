@@ -11,7 +11,7 @@ We use the pretrain model downloaded from: https://github.com/huyvnphan/PyTorch_
 """
 import numpy as np
 import os.path as osp
-import os, shutil, torch, zipfile, gdown
+import os, copy, shutil, torch, zipfile, gdown
 import torchvision
 import torchvision.transforms as transforms
 import argparse
@@ -85,12 +85,24 @@ def fine_tuning_encoder(seat, train_loader, epochs=50):
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     '''
+
     for epoch in range(epochs):
-        for step, (x, y) in enumerate(train_loader):
+        pbar = tqdm(enumerate(train_loader))
+        size = len(train_loader)
+        for step, (x, y) in pbar:
             loss1, loss2 = seat.fine_tuning(x, y)
-            if step % 10 == 0:
-                print(f"-> epoch:{epoch} step:{step} loss_positive:{loss1} loss_negative:{loss2}")
+            pbar.set_description(
+                "Epoch{:d}: [{:d}/{:d}] loss_pos:{:.6f}+loss_neg:{:.6f}={:.6f}\t".format(
+                    epoch, step, size,
+                    loss1, loss2,
+                    loss1 + loss2)
+            )
+            pbar.update(1)
         # TODO: save model
+        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch}.pt")
+        torch.save(copy.deepcopy(seat.encoder).state_dict(), path)
+        print(f"-> save model to: {path}")
+
 
 def evaluate_SEAT(seat, test_loader):
     pass

@@ -26,3 +26,8 @@ python3 main.py
 ```
 
 Download fine-tuned encoder here: [https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing](https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing)
+
+
+# License
+This library is under the GPL V3 license. 
+For the full copyright and license information, please view the [https://raw.githubusercontent.com/grasses/SEAT/master/LICENSE](LICENSE) file that was distributed with this source code.

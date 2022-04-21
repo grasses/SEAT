@@ -22,7 +22,7 @@ import trans
 from models.vgg import vgg16_bn
 from tqdm import tqdm
 from seat import SEAT
-ROOT = osp.abspath(osp.dirname(osp.dirname(__file__)))
+ROOT = osp.abspath(osp.dirname(__file__))
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=int, default=0)
 parser.add_argument("--seed", type=int, default=999999)

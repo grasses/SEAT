@@ -92,7 +92,7 @@ def load_pretrained_encoder(arch="vgg16_bn"):
     return torch.load(target_file, map_location="cpu")
 
 
-def fine_tuning_encoder(seat, train_loader, epochs=100):
+def fine_tuning_encoder(seat, train_loader, epochs=50):
     """
     fine-tuning encoder using last layer of CNN feature maps as latent space of encoder
     :param seat: SEAT object
@@ -177,7 +177,7 @@ def main():
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=100)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

@@ -30,5 +30,5 @@ Download fine-tuned encoder here: [https://drive.google.com/drive/folders/1RgeDj
 
 # License
 
-This library is under the GPL V3 license. 
+This library is under the MIT license. 
 For the full copyright and license information, please view the [LICENSE](https://raw.githubusercontent.com/grasses/SEAT/master/LICENSE) file that was distributed with this source code.

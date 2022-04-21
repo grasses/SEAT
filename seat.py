@@ -38,7 +38,7 @@ class SEAT:
         """
         # generate positive sample
         if trans_pos == "pgd":
-            x_pos = self.adv.pgd(copy.deepcopy(x0), y0)
+            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=8./255, steps=40)
         elif trans_pos == "cw":
             x_pos = self.adv.cw(copy.deepcopy(x0), y0)
         elif trans_pos == "fgsm":
@@ -67,16 +67,16 @@ class SEAT:
     def fine_tuning(self, x, y):
         self.encoder.train()
         self.optimizer.zero_grad()
-        x, x_pos, x_neg = self.create_pairs(x, y)
-        feat = self.encoder.feats_forward(x)
+        x0, x_pos, x_neg = self.create_pairs(x, y)
+        feat = self.encoder.feats_forward(x0)
         feat_pos = self.encoder.feats_forward(x_pos)
         feat_neg = self.encoder.feats_forward(x_neg)
-        loss1 = self.criterion(feat, feat_pos)
-        loss2 = torch.max(self.zero, self.mm - self.criterion(feat, feat_neg))[0]
-        loss = loss1 + loss2
+        loss_pos = self.criterion(feat, feat_pos)
+        loss_neg = torch.max(self.zero, self.mm - self.criterion(feat, feat_neg))[0]
+        loss = loss_pos + loss_neg
         loss.backward()
         self.optimizer.step()
-        return loss1.item(), loss2.item()
+        return loss_pos.item(), loss_neg.item()
 
     def detect(self, query):
         self.encoder.eval()

@@ -38,7 +38,7 @@ class SEAT:
         """
         # generate positive sample
         if trans_pos == "pgd":
-            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=8./255, steps=40)
+            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=16./255, steps=40)
         elif trans_pos == "cw":
             x_pos = self.adv.cw(copy.deepcopy(x0), y0)
         elif trans_pos == "fgsm":

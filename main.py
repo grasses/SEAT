@@ -27,6 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=int, default=0)
 parser.add_argument("--seed", type=int, default=999999)
 parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--arch", type=str, default="vgg16_bn")
 parser.add_argument("--data_root", default=osp.join(ROOT, "datasets/data"))
 parser.add_argument("--cpkt_root", default=osp.join(ROOT, "models/ckpt"))
 args = parser.parse_args()
@@ -73,7 +74,7 @@ def load_data(root="./datasets/data", batch_size=128):
     return train_loader, test_loader, bounds
 
 
-def load_pretrained_encoder(arch="vgg16_bn"):
+def load_pretrained_encoder(arch):
     local_root = osp.join(ROOT, "models")
     target_file = osp.join(local_root, f"ckpt/{arch}.pt")
     local_file = osp.join(local_root, "state_dicts.zip")
@@ -92,7 +93,7 @@ def load_pretrained_encoder(arch="vgg16_bn"):
     return torch.load(target_file, map_location="cpu")
 
 
-def fine_tuning_encoder(seat, train_loader, epochs=50):
+def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
     """
     fine-tuning encoder using last layer of CNN feature maps as latent space of encoder
     :param seat: SEAT object
@@ -100,7 +101,7 @@ def fine_tuning_encoder(seat, train_loader, epochs=50):
     :param epochs:
     :return: None
     """
-    path = osp.join(ROOT, f"models/ckpt/encoder_{epochs}.pt")
+    path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epochs}.pt")
     if osp.exists(path):
         print(f"-> load pretrained encoder from: {path}\n")
         weights = torch.load(path, map_location=args.device)
@@ -109,7 +110,7 @@ def fine_tuning_encoder(seat, train_loader, epochs=50):
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(epochs):
-        path = osp.join(ROOT, f"models/ckpt/encoder_{epoch + 1}.pt")
+        path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epoch + 1}.pt")
         if osp.exists(path):
             weights = torch.load(path, map_location=args.device)
             seat.encoder.load_state_dict(weights)
@@ -171,13 +172,13 @@ def main():
     train_loader, test_loader, bounds = load_data(batch_size=args.batch_size)
 
     print("""\n-> step2: load pretrained encoder""")
-    load_pretrained_encoder(arch="vgg16_bn")
+    load_pretrained_encoder(arch=args.arch)
     encoder = vgg16_bn(pretrained=True)
     encoder.to(args.device)
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

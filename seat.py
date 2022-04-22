@@ -4,6 +4,7 @@
 __author__ = 'homeway'
 __copyright__ = 'Copyright © 2022/04/18, homeway'
 
+import numpy as np
 import trans
 import torch, copy
 from torch.nn import functional as F
@@ -38,7 +39,7 @@ class SEAT:
         """
         # generate positive sample
         if trans_pos == "pgd":
-            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=16./255, steps=40)
+            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=8./255, steps=40)
         elif trans_pos == "cw":
             x_pos = self.adv.cw(copy.deepcopy(x0), y0)
         elif trans_pos == "fgsm":
@@ -81,22 +82,23 @@ class SEAT:
     def detect(self, query):
         self.encoder.eval()
         query = query.to(self.device)
-        feats = self.encoder.feats_forward(query).cpu()
+        feats = self.encoder.feats_forward(query).detach().cpu()
 
-        adv_dist = []
+        alarm = False
+        dist = np.zeros(len(query))
+        pred = np.zeros(len(query), dtype=np.int32)
         for idx in range(len(query)):
             for hist_feats in self.history_feats:
-                dist = F.mse_loss(feats[idx], hist_feats)
-                if dist < self.delta:
+                dist[idx] = float(F.mse_loss(feats[idx], hist_feats))
+                if dist[idx] < self.delta:
+                    pred[idx] = 1
                     self.count += 1
-                    adv_dist.append(dist.item())
+                    # send extraction alarm
+                    if self.count > self.N:
+                        alarm = True
                     break
-
-                if self.count > self.N:
-                    pass
-                    #print(f"-> Find adversary, malicious query count:{self.count}!!!")
             self.history_feats.append(feats[idx])
-        return adv_dist
+        return alarm, pred, dist
 
 
 

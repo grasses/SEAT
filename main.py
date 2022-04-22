@@ -139,11 +139,15 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
 
 def evaluate_SEAT(seat, test_loader):
     size = len(test_loader)
+    FP, TP, FN, TN = 0, 0, 0, 0
+
     print("-> detect benign query")
     pbar = tqdm(enumerate(test_loader))
     for step, (x, y) in pbar:
         query = x.to(args.device)
-        adv_dist = seat.detect(query=query)
+        alarm, pred, dist = seat.detect(query=query)
+        FN += np.sum(pred)
+        TP += (len(query) - np.sum(pred))
         pbar.set_description(
             f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
 
@@ -154,10 +158,19 @@ def evaluate_SEAT(seat, test_loader):
     for step, (x, y) in pbar:
         x = x.to(args.device)
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
-        query = adv.pgd(x, y, eps=50./255., alpha=50./255., steps=30, random_start=True)
-        adv_dist = seat.detect(query=query)
+        query = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
+        alarm, pred, dist = seat.detect(query=query)
+        TN += np.sum(pred)
+        FP += (len(query) - np.sum(pred))
         pbar.set_description(
             f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
+
+    precision = 1.0 * TP / (TP + FP)
+    recall = 1.0 * TP / (TP + FN)
+    ACC = 100.0 * (TP + TN) / (FP + TP + FN + TN)
+    TPR = 1.0 * TP / (TP + FN)
+    FPR = 1.0 * FP / (TN + FP)
+    print(f"-> ACC:{ACC} TPR:{TPR} FPR:{FPR} recall:{recall} precision:{precision}")
 
 
 def main():

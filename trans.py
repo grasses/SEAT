@@ -15,7 +15,6 @@ else:
 
 def rgb2hsv(rgb):
     """Convert a 4-d RGB tensor to the HSV counterpart.
-
     Here, we compute hue using atan2() based on the definition in [1],
     instead of using the common lookup table approach as in [2, 3].
     Those values agree when the angle is a multiple of 30°,
@@ -26,13 +25,10 @@ def rgb2hsv(rgb):
     [2] https://www.rapidtables.com/convert/color/rgb-to-hsv.html
     [3] https://github.com/scikit-image/scikit-image/blob/master/skimage/color/colorconv.py#L212
     """
-
     r, g, b = rgb[:, 0, :, :], rgb[:, 1, :, :], rgb[:, 2, :, :]
-
     Cmax = rgb.max(1)[0]
     Cmin = rgb.min(1)[0]
     delta = Cmax - Cmin
-
     hue = torch.atan2(math.sqrt(3) * (g - b), 2 * r - g - b)
     hue = (hue % (2 * math.pi)) / (2 * math.pi)
     saturate = delta / Cmax
@@ -44,7 +40,6 @@ def rgb2hsv(rgb):
 
 def hsv2rgb(hsv):
     """Convert a 4-d HSV tensor to the RGB counterpart.
-
     >>> %timeit hsv2rgb(hsv)
     2.37 ms ± 13.4 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     >>> %timeit rgb2hsv_fast(rgb)
@@ -104,42 +99,32 @@ class RandomResizedCropLayer(nn.Module):
         return output
 
     def _clamp(self, whbias):
-
         w = whbias[:, 0]
         h = whbias[:, 1]
         w_bias = whbias[:, 2]
         h_bias = whbias[:, 3]
-
         # Clamp with scale
         w = torch.clamp(w, *self.scale)
         h = torch.clamp(h, *self.scale)
-
         # Clamp with ratio
         w = self.ratio[0] * h + torch.relu(w - self.ratio[0] * h)
         w = self.ratio[1] * h - torch.relu(self.ratio[1] * h - w)
-
         # Clamp with bias range: w_bias \in (w - 1, 1 - w), h_bias \in (h - 1, 1 - h)
         w_bias = w - 1 + torch.relu(w_bias - w + 1)
         w_bias = 1 - w - torch.relu(1 - w - w_bias)
-
         h_bias = h - 1 + torch.relu(h_bias - h + 1)
         h_bias = 1 - h - torch.relu(1 - h - h_bias)
-
         whbias = torch.stack([w, h, w_bias, h_bias], dim=0).t()
-
         return whbias
 
     def _sample_latent(self, inputs):
-
         _device = inputs.device
         N, _, width, height = inputs.shape
-
         # N * 10 trial
         area = width * height
         target_area = np.random.uniform(*self.scale, N * 10) * area
         log_ratio = (math.log(self.ratio[0]), math.log(self.ratio[1]))
         aspect_ratio = np.exp(np.random.uniform(*log_ratio, N * 10))
-
         # If doesn't satisfy ratio condition, then do central crop
         w = np.round(np.sqrt(target_area * aspect_ratio))
         h = np.round(np.sqrt(target_area / aspect_ratio))
@@ -153,17 +138,13 @@ class RandomResizedCropLayer(nn.Module):
         else:
             w = np.concatenate([w, np.ones(N - cond_len) * width])
             h = np.concatenate([h, np.ones(N - cond_len) * height])
-
         w_bias = np.random.randint(w - width, width - w + 1) / width
         h_bias = np.random.randint(h - height, height - h + 1) / height
         w = w / width
         h = h / height
-
         whbias = np.column_stack([w, h, w_bias, h_bias])
         whbias = torch.tensor(whbias, device=_device)
-
         return whbias
-
 
 class HorizontalFlipRandomCrop(nn.Module):
     def __init__(self, max_range):
@@ -176,20 +157,16 @@ class HorizontalFlipRandomCrop(nn.Module):
         _device = input.device
         N = input.size(0)
         _theta = self._eye.repeat(N, 1, 1)
-
         if sign is None:
             sign = torch.bernoulli(torch.ones(N, device=_device) * 0.5) * 2 - 1
         if bias is None:
             bias = torch.empty((N, 2), device=_device).uniform_(-self.max_range, self.max_range)
         _theta[:, 0, 0] = sign
         _theta[:, :, 2] = bias
-
         if rotation is not None:
             _theta[:, 0:2, 0:2] = rotation
-
         grid = F.affine_grid(_theta, input.size(), **kwargs).to(_device)
         output = F.grid_sample(input, grid, padding_mode='reflection', **kwargs)
-
         return output
 
     def _sample_latent(self, N, device=None):
@@ -206,22 +183,16 @@ class Rotation(nn.Module):
 
     def forward(self, input, aug_index=None):
         _device = input.device
-
         _, _, H, W = input.size()
-
         if aug_index is None:
             aug_index = np.random.randint(4)
-
             output = torch.rot90(input, aug_index, (2, 3))
-
             _prob = input.new_full((input.size(0),), self.prob)
             _mask = torch.bernoulli(_prob).view(-1, 1, 1, 1)
             output = _mask * input + (1-_mask) * output
-
         else:
             aug_index = aug_index % self.max_range
             output = torch.rot90(input, aug_index, (2, 3))
-
         return output
 
 
@@ -233,38 +204,28 @@ class CutPerm(nn.Module):
 
     def forward(self, input, aug_index=None):
         _device = input.device
-
         _, _, H, W = input.size()
-
         if aug_index is None:
             aug_index = np.random.randint(4)
-
             output = self._cutperm(input, aug_index)
-
             _prob = input.new_full((input.size(0),), self.prob)
             _mask = torch.bernoulli(_prob).view(-1, 1, 1, 1)
             output = _mask * input + (1 - _mask) * output
-
         else:
             aug_index = aug_index % self.max_range
             output = self._cutperm(input, aug_index)
-
         return output
 
     def _cutperm(self, inputs, aug_index):
-
         _, _, H, W = inputs.size()
         h_mid = int(H / 2)
         w_mid = int(W / 2)
-
         jigsaw_h = aug_index // 2
         jigsaw_v = aug_index % 2
-
         if jigsaw_h == 1:
             inputs = torch.cat((inputs[:, :, h_mid:, :], inputs[:, :, 0:h_mid, :]), dim=2)
         if jigsaw_v == 1:
             inputs = torch.cat((inputs[:, :, :, w_mid:], inputs[:, :, :, 0:w_mid]), dim=3)
-
         return inputs
 
 
@@ -277,20 +238,17 @@ class HorizontalFlipLayer(nn.Module):
             grayscale or 3 for RGB
         """
         super(HorizontalFlipLayer, self).__init__()
-
         _eye = torch.eye(2, 3)
         self.register_buffer('_eye', _eye)
 
     def forward(self, inputs):
         _device = inputs.device
-
         N = inputs.size(0)
         _theta = self._eye.repeat(N, 1, 1)
         r_sign = torch.bernoulli(torch.ones(N, device=_device) * 0.5) * 2 - 1
         _theta[:, 0, 0] = r_sign
         grid = F.affine_grid(_theta, inputs.size(), **kwargs).to(_device)
         inputs = F.grid_sample(inputs, grid, padding_mode='reflection', **kwargs)
-
         return inputs
 
 
@@ -298,24 +256,18 @@ class RandomColorGrayLayer(nn.Module):
     def __init__(self, p):
         super(RandomColorGrayLayer, self).__init__()
         self.prob = p
-
         _weight = torch.tensor([[0.299, 0.587, 0.114]])
         self.register_buffer('_weight', _weight.view(1, 3, 1, 1))
 
     def forward(self, inputs, aug_index=None):
-
         if aug_index == 0:
             return inputs
-
         l = F.conv2d(inputs, self._weight)
         gray = torch.cat([l, l, l], dim=1)
-
         if aug_index is None:
             _prob = inputs.new_full((inputs.size(0),), self.prob)
             _mask = torch.bernoulli(_prob).view(-1, 1, 1, 1)
-
             gray = inputs * (1 - _mask) + gray * _mask
-
         return gray
 
 
@@ -341,7 +293,6 @@ class ColorJitterLayer(nn.Module):
                 raise ValueError("{} values should be between {}".format(name, bound))
         else:
             raise TypeError("{} should be a single number or a list/tuple with lenght 2.".format(name))
-
         # if value is 0 or (1., 1.) for brightness/contrast/saturation
         # or (0., 0.) for hue, do nothing
         if value[0] == value[1] == center:
@@ -419,7 +370,6 @@ class NormalizeLayer(nn.Module):
     add the Gaussian noise _before_ standardizing, which is why we have standardization be the first
     layer of the classifier rather than as a part of preprocessing as is typical.
     """
-
     def __init__(self):
         super(NormalizeLayer, self).__init__()
 
@@ -441,7 +391,6 @@ class Adv(nn.Module):
         labels = labels.clone().detach().to(self.device)
         loss = nn.CrossEntropyLoss()
         adv_images = images.clone().detach()
-
         if random_start:
             # Starting at a uniformly random point
             adv_images = adv_images + torch.empty_like(adv_images).uniform_(-eps, eps)

@@ -170,7 +170,7 @@ def evaluate_SEAT(seat, test_loader):
     ACC = 100.0 * (TP + TN) / (FP + TP + FN + TN)
     TPR = 1.0 * TP / (TP + FN)
     FPR = 1.0 * FP / (TN + FP)
-    print(f"-> ACC:{ACC} TPR:{TPR} FPR:{FPR} recall:{recall} precision:{precision}")
+    print(f"\n-> ACC:{ACC} TPR:{TPR} FPR:{FPR} recall:{recall} precision:{precision}")
 
 
 def main():

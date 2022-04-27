@@ -40,23 +40,6 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
-def get_bounds(mean, std):
-    '''
-    get bound of dataset
-    :param mean: list, float
-    :param std: list, float
-    :return: list, [lower_bound, upper_bound]
-    '''
-    bounds = [-1, 1]
-    if type(mean) == type(()):
-        c = len(mean)
-        _min = (np.zeros([c]) - np.array(mean)) / np.array([std])
-        _max = (np.ones([c]) - np.array(mean)) / np.array([std])
-        bounds = [np.min(_min).item(), np.max(_max).item()]
-    elif type(mean) == float:
-        bounds = [(0.0 - mean) / std, (1.0 - mean) / std]
-    return bounds
-
 def load_data(root="./datasets/data", batch_size=128):
     mean = (0.43768206, 0.44376972, 0.47280434)
     std = (0.19803014, 0.20101564, 0.19703615)
@@ -70,7 +53,7 @@ def load_data(root="./datasets/data", batch_size=128):
     test_set = torchvision.datasets.CIFAR10(root=root, train=False, download=True, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=2)
-    bounds = get_bounds(mean=mean, std=std)
+    bounds = trans.get_bounds(mean=mean, std=std)
     return train_loader, test_loader, bounds
 
 
@@ -145,7 +128,7 @@ def evaluate_SEAT(seat, test_loader):
     pbar = tqdm(enumerate(test_loader))
     for step, (x, y) in pbar:
         query = x.to(args.device)
-        alarm, pred, dist = seat.detect(query=query)
+        alarm, pred, dist = seat.query(query=query)
         FN += np.sum(pred)
         TP += (len(query) - np.sum(pred))
         pbar.set_description(
@@ -159,7 +142,7 @@ def evaluate_SEAT(seat, test_loader):
         x = x.to(args.device)
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
         query = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
-        alarm, pred, dist = seat.detect(query=query)
+        alarm, pred, dist = seat.query(query=query)
         TN += np.sum(pred)
         FP += (len(query) - np.sum(pred))
         pbar.set_description(

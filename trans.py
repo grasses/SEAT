@@ -13,6 +13,24 @@ else:
     kwargs = {}
 
 
+def get_bounds(mean, std):
+    '''
+    get bound of dataset
+    :param mean: list, float
+    :param std: list, float
+    :return: list, [lower_bound, upper_bound]
+    '''
+    bounds = [-1, 1]
+    if type(mean) == type(()):
+        c = len(mean)
+        _min = (np.zeros([c]) - np.array(mean)) / np.array([std])
+        _max = (np.ones([c]) - np.array(mean)) / np.array([std])
+        bounds = [np.min(_min).item(), np.max(_max).item()]
+    elif type(mean) == float:
+        bounds = [(0.0 - mean) / std, (1.0 - mean) / std]
+    return bounds
+
+
 def rgb2hsv(rgb):
     """Convert a 4-d RGB tensor to the HSV counterpart.
     Here, we compute hue using atan2() based on the definition in [1],
@@ -528,7 +546,6 @@ class Adv(nn.Module):
             return self.bim(images, labels)
         else:
             return images
-            #return self.cw(images, labels)
 
 
 

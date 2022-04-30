@@ -123,7 +123,7 @@ def evaluate_SEAT(seat, test_loader):
     pbar = tqdm(enumerate(test_loader))
     for step, (x, y) in pbar:
         query = x.to(args.device)
-        alarm, pred, dist = seat.query(query=query)
+        alarm, pred, dist = seat.query(query)
         FN += np.sum(pred)
         TP += (len(query) - np.sum(pred))
         pbar.set_description(
@@ -137,7 +137,7 @@ def evaluate_SEAT(seat, test_loader):
         x = x.to(args.device)
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
         query = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
-        alarm, pred, dist = seat.query(query=query)
+        alarm, pred, dist = seat.query(query)
         TN += np.sum(pred)
         FP += (len(query) - np.sum(pred))
         pbar.set_description(

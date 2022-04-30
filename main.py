@@ -122,12 +122,12 @@ def evaluate_SEAT(seat, test_loader):
     print("-> detect benign query")
     pbar = tqdm(enumerate(test_loader))
     for step, (x, y) in pbar:
-        query = x.to(args.device)
-        alarm, pred, dist = seat.query(query)
+        x0 = x.to(args.device)
+        alarm, pred, dist = seat.query(x0)
         FN += np.sum(pred)
-        TP += (len(query) - np.sum(pred))
+        TP += (len(x0) - np.sum(pred))
         pbar.set_description(
-            f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
+            f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] score:{round(100.0*seat.count/len(x0), 2)}")
 
     seat.reset()
     adv = trans.Adv(model=copy.deepcopy(seat.encoder), bounds=seat.bounds)
@@ -136,12 +136,12 @@ def evaluate_SEAT(seat, test_loader):
     for step, (x, y) in pbar:
         x = x.to(args.device)
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
-        query = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
-        alarm, pred, dist = seat.query(query)
+        x0 = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
+        alarm, pred, dist = seat.query(x0)
         TN += np.sum(pred)
-        FP += (len(query) - np.sum(pred))
+        FP += (len(x0) - np.sum(pred))
         pbar.set_description(
-            f"-> [{step}/{size}] adv_query_count:{seat.count} total_query:{len(seat.history_feats)}")
+             f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] score:{round(100.0*seat.count/len(x0), 2)}")
 
     precision = 1.0 * TP / (TP + FP)
     recall = 1.0 * TP / (TP + FN)

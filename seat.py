@@ -23,6 +23,7 @@ class SEAT:
         self.N = N
         self.delta = delta
         self.bounds = bounds
+        self.hist_feats = []
         self.reset()
 
     def reset(self):

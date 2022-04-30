@@ -126,8 +126,9 @@ def evaluate_SEAT(seat, test_loader):
         alarm, pred, dist = seat.query(x0)
         FN += np.sum(pred)
         TP += (len(x0) - np.sum(pred))
+        scores = round(100.0*seat.count/len(x0), 5)
         pbar.set_description(
-            f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] score:{round(100.0*seat.count/len(x0), 2)}")
+            f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
 
     seat.reset()
     adv = trans.Adv(model=copy.deepcopy(seat.encoder), bounds=seat.bounds)
@@ -140,8 +141,9 @@ def evaluate_SEAT(seat, test_loader):
         alarm, pred, dist = seat.query(x0)
         TN += np.sum(pred)
         FP += (len(x0) - np.sum(pred))
+        scores = round(100.0 * seat.count / len(x0), 5)
         pbar.set_description(
-             f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] score:{round(100.0*seat.count/len(x0), 2)}")
+             f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
 
     precision = 1.0 * TP / (TP + FP)
     recall = 1.0 * TP / (TP + FN)

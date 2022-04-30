@@ -69,10 +69,10 @@ class SEAT:
         return x0, x_pos, x_neg
 
     def fine_tuning(self, x, y):
-        trans_neg = ["rotation", "scaling", "flip"][random.randint(0, 2)]
+        trans_pos = ["rotation", "scaling", "flip"][random.randint(0, 2)]
         self.encoder.train()
         self.optimizer.zero_grad()
-        x0, x_pos, x_neg = self.create_pairs(x, y, trans_neg=trans_neg)
+        x0, x_pos, x_neg = self.create_pairs(x, y, trans_pos=trans_pos)
         feat = self.encoder.feats_forward(x0)
         feat_pos = self.encoder.feats_forward(x_pos)
         feat_neg = self.encoder.feats_forward(x_neg)

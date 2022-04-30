@@ -32,7 +32,7 @@ class SEAT:
         self.criterion = torch.nn.MSELoss(reduction="mean")
         self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
 
-    def create_pairs(self, x0, y0, trans_pos="pgd", trans_neg="rotation"):
+    def create_pairs(self, x0, y0, trans_pos="rotation", trans_neg="pgd"):
         """
         Statement from paper:
         𝑥_pos is a positive sample which 𝑓 should consider closed to 𝑥0
@@ -40,27 +40,27 @@ class SEAT:
         𝑥_neg is generated from random transformations (e.g. rotation, scaling, cropping, etc.)
         """
         # generate positive sample
-        if trans_pos == "pgd":
-            x_pos = self.adv.pgd(copy.deepcopy(x0), y0, eps=8./255, steps=40)
-        elif trans_pos == "cw":
-            x_pos = self.adv.cw(copy.deepcopy(x0), y0)
-        elif trans_pos == "fgsm":
-            x_pos = self.adv.fgsm(copy.deepcopy(x0), y0)
-        elif trans_pos == "bim":
-            x_pos = self.adv.bim(copy.deepcopy(x0), y0)
+        if trans_neg == "pgd":
+            x_neg = self.adv.pgd(copy.deepcopy(x0), y0, eps=8./255, steps=40)
+        elif trans_neg == "cw":
+            x_neg = self.adv.cw(copy.deepcopy(x0), y0)
+        elif trans_neg == "fgsm":
+            x_neg = self.adv.fgsm(copy.deepcopy(x0), y0)
+        elif trans_neg == "bim":
+            x_neg = self.adv.bim(copy.deepcopy(x0), y0)
         else:
             raise NotImplementedError(f"-> Error! transform method:{trans_pos} not implemented!")
 
         # generate negative sample
-        if trans_neg == "rotation":
+        if trans_pos == "rotation":
             transform = trans.Rotation()
-        elif trans_neg == "scaling":
+        elif trans_pos == "scaling":
             transform = trans.RandomResizedCropLayer()
-        elif trans_neg == "flip":
+        elif trans_pos == "flip":
             transform = trans.HorizontalFlipRandomCrop(max_range=min(-self.bounds[0], self.bounds[1]))
         else:
             raise NotImplementedError(f"-> Error! transform method:{trans_neg} not implemented!")
-        x_neg = transform(copy.deepcopy(x0))
+        x_pos = transform(copy.deepcopy(x0))
 
         # return x0, x_pos, x_neg
         x0 = x0.to(self.device)

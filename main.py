@@ -84,7 +84,7 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
     :param epochs:
     :return: None
     """
-    path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epochs}.pt")
+    path = osp.join(ROOT, f"models/ckpt/enc_{arch}.pt")
     if osp.exists(path):
         print(f"-> load pretrained encoder from: {path}\n")
         weights = torch.load(path, map_location=args.device)
@@ -93,12 +93,7 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(epochs):
-        path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epoch + 1}.pt")
-        if osp.exists(path):
-            weights = torch.load(path, map_location=args.device)
-            seat.encoder.load_state_dict(weights)
-            scheduler.step()
-            continue
+        path = osp.join(ROOT, f"models/ckpt/enc_{arch}.pt")
         pbar = tqdm(enumerate(train_loader))
         size = len(train_loader)
         sum_loss1 = 0.0

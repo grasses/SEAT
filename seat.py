@@ -12,7 +12,7 @@ from torch.nn import functional as F
 
 
 class SEAT:
-    def __init__(self, encoder, m=3.1622776601683795, delta=0.01, N=200, bounds=[-1, 1], device=None):
+    def __init__(self, encoder, m=3.1622776601683795, delta=0.001, N=100, bounds=[-1, 1], device=None):
         self.encoder = encoder
         self.device = device
         if device is None:
@@ -30,7 +30,7 @@ class SEAT:
         self.hist_feats = []
         self.adv = trans.Adv(model=copy.deepcopy(self.encoder), bounds=self.bounds)
         self.criterion = torch.nn.MSELoss(reduction="mean")
-        self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-2, momentum=0.9, weight_decay=5e-4)
+        self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
 
     def create_pairs(self, x0, y0, trans_pos="pgd", trans_neg="rotation"):
         """

@@ -92,7 +92,7 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
         return
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
-    for epoch in range(epochs):
+    for epoch in range(1, 1+epochs):
         path = osp.join(ROOT, f"models/ckpt/enc_{arch}.pt")
         pbar = tqdm(enumerate(train_loader))
         size = len(train_loader)
@@ -110,7 +110,9 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
             sum_loss2 += loss2
             pbar.update(1)
         scheduler.step()
-        torch.save(copy.deepcopy(seat.encoder).state_dict(), path)
+        if epoch % 10 == 0:
+            path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epoch}.pt")
+            torch.save(copy.deepcopy(seat.encoder).state_dict(), path)
         print(f"-> Epoch:{epoch} l1:{1.0*sum_loss1/size} l2:{1.0*sum_loss2/size}  save model to: {path}\n")
     return seat
 
@@ -145,11 +147,11 @@ def evaluate_SEAT(seat, test_loader):
         pbar.set_description(
              f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
 
-    precision = 1.0 * TP / (TP + FP)
-    recall = 1.0 * TP / (TP + FN)
-    ACC = 100.0 * (TP + TN) / (FP + TP + FN + TN)
-    TPR = 1.0 * TP / (TP + FN)
-    FPR = 1.0 * FP / (TN + FP)
+    precision = round(100.0 * TP / (TP + FP), 3)
+    recall = round(100.0 * TP / (TP + FN), 3)
+    ACC = round(100.0 * (TP + TN) / (FP + TP + FN + TN), 3)
+    TPR = round(100.0 * TP / (TP + FN), 3)
+    FPR = round(100.0 * FP / (TN + FP), 3)
     print(f"\n-> ACC:{ACC} TPR:{TPR} FPR:{FPR} recall:{recall} precision:{precision}")
 
 
@@ -170,7 +172,7 @@ def main():
     encoder.to(args.device)
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
-    seat = SEAT(encoder, bounds=bounds)
+    seat = SEAT(encoder, bounds=bounds, threshold_score=0.2, delta=1e-5)
     fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")

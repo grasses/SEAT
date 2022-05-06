@@ -12,18 +12,18 @@ from torch.nn import functional as F
 
 
 class SEAT:
-    def __init__(self, encoder, m=3.1622776601683795, delta=0.001, N=100, bounds=[-1, 1], device=None):
+    def __init__(self, encoder, m=3.1622776601683795, delta=1e-4, score_threshold=0.9, bounds=[-1, 1], device=None):
+        assert score_threshold < 1
+        assert score_threshold > 0
         self.encoder = encoder
         self.device = device
+        self.score_threshold = score_threshold
         if device is None:
             self.device = next(encoder.parameters()).device
         self.zero = torch.zeros(1, device=self.device)
         self.mm = torch.tensor(m * m).to(self.device)
-
-        self.N = N
         self.delta = delta
         self.bounds = bounds
-        self.hist_feats = []
         self.reset()
 
     def reset(self):
@@ -99,11 +99,12 @@ class SEAT:
                 if dist[idx] < self.delta:
                     pred[idx] = 1
                     self.count += 1
-                    # send extraction alarm
-                    if self.count > self.N:
-                        alarm = True
                     break
             self.hist_feats.append(feats[idx])
+
+        # send extraction alarm to MLaaS server
+        if float(self.count/len(x)) > (1.0-self.score_threshold):
+            alarm = True
         return alarm, pred, dist
 
 

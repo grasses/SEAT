@@ -41,7 +41,7 @@ Result preview for CIFAR10:
 <summary>For MNIST</summary>
 
 ```
-python3 main.py --arch lenet5 --task mnist
+python3 main.py --arch lenet --task mnist
 ```
 </details>
 

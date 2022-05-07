@@ -8,14 +8,14 @@ __copyright__ = 'Copyright © 2022/04/18, homeway'
 import trans
 import torchvision
 import torchvision.transforms as transforms
-from models.lenet5 import *
+from models.lenet import *
 from models.vgg import *
 ROOT = osp.abspath(osp.dirname(__file__))
 
 
 def load_model(arch):
-    if arch.lower() == "lenet5":
-        return lenet5(pretrained=True)
+    if arch.lower() == "lenet":
+        return lenet(pretrained=True)
     elif "vgg" in arch.lower():
         return eval(f"{arch}(pretrained=True)")
     else:
@@ -53,6 +53,7 @@ def load_mnist(root=osp.join(ROOT, "datasets/data"), batch_size=128, query_size=
     std = (0.3081)
     transform = transforms.Compose(
         [
+            transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
          ]

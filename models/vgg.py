@@ -2,6 +2,11 @@ import os
 
 import torch
 import torch.nn as nn
+import gdown
+import zipfile
+import shutil
+import os.path as osp
+ROOT = osp.abspath(osp.dirname(osp.dirname(__file__)))
 
 __all__ = [
     "VGG",
@@ -130,10 +135,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, progress, device, **kwargs):
         kwargs["init_weights"] = False
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
     if pretrained:
-        script_dir = os.path.dirname(__file__)
-        state_dict = torch.load(
-            script_dir + "/ckpt/" + arch + ".pt", map_location=device
-        )
+        state_dict = load_pretrained_vgg(arch=arch)
         model.load_state_dict(state_dict)
     return model
 
@@ -176,3 +178,22 @@ def vgg19_bn(pretrained=False, progress=True, device="cpu", **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg("vgg19_bn", "E", True, pretrained, progress, device, **kwargs)
+
+
+def load_pretrained_vgg(arch):
+    local_root = osp.join(ROOT, "models")
+    target_file = osp.join(local_root, f"ckpt/{arch}.pt")
+    local_file = osp.join(local_root, "state_dicts.zip")
+    if not osp.exists(local_file):
+        print("-> Pretrained model not found!! download now...")
+        remote_url = "https://drive.google.com/u/0/uc?id=17fmN8eQdLpq2jIMQ_X0IXDPXfI9oVWgq&export=download"
+        gdown.download(remote_url, local_file, quiet=False)
+    if not osp.exists(target_file):
+        print("-> Unzip state_dicts.zip file...")
+        with zipfile.ZipFile(local_file, "r") as zip_ref:
+            zip_ref.extractall(local_root)
+            for file in os.listdir(osp.join(local_root, "state_dicts")):
+                source = osp.join(local_root, "state_dicts", file)
+                destination = osp.join(local_root, "ckpt", file)
+                shutil.move(source, destination)
+    return torch.load(target_file, map_location="cpu")

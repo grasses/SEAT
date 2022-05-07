@@ -1,5 +1,4 @@
 gdown==4.4.0
-torchattacks==3.2.4
 tqdm==4.59.0
 
 --find-links https://download.pytorch.org/whl/cu113/torch_stable.html

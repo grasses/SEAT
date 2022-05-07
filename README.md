@@ -20,12 +20,28 @@ pip install -r requirements.txt
 
 # Usage
 
-Run main.py to fine-tune encoder and then evaluate SEAT
-```
-python3 main.py
-```
+Run main.py to fine-tune encoder and then evaluate SEAT.
 
-Download fine-tuned encoder here: [https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing](https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing)
+<details>
+<summary>For CIFAR10</summary>
+
+```
+python3 main.py --arch vgg16_bn --task cifar10
+```
+</details>
+
+<br>
+
+<details>
+<summary>For MNIST</summary>
+
+```
+python3 main.py --arch lenet5 --task mnist
+```
+</details>
+
+
+Download fine-tuned VGG encoder here: [https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing](https://drive.google.com/drive/folders/1RgeDjPNs9Tswn7hmkzBLLSl8mRJxBFm4?usp=sharing)
 
 
 # License

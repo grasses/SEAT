@@ -12,7 +12,7 @@ from torch.nn import functional as F
 
 
 class SEAT:
-    def __init__(self, encoder, m=3.1622776601683795, delta=1e-4, score_threshold=0.9, bounds=[-1, 1], device=None):
+    def __init__(self, encoder, m=3.1622776601683795, delta=1e-4, score_threshold=0.9, bounds=[-1, 1], optimizer=None, device=None):
         assert score_threshold < 1
         assert score_threshold > 0
         self.encoder = encoder
@@ -20,18 +20,21 @@ class SEAT:
         self.score_threshold = score_threshold
         if device is None:
             self.device = next(encoder.parameters()).device
+
         self.zero = torch.zeros(1, device=self.device)
         self.mm = torch.tensor(m * m).to(self.device)
         self.delta = delta
         self.bounds = bounds
+        self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
         self.reset()
 
-    def reset(self):
+    def reset(self, optimizer=None):
         self.count = 0
         self.hist_feats = []
         self.adv = trans.Adv(model=copy.deepcopy(self.encoder), bounds=self.bounds)
         self.criterion = torch.nn.MSELoss(reduction="mean")
-        self.optimizer = torch.optim.SGD(self.encoder.parameters(), lr=1e-3, momentum=0.9, weight_decay=5e-4)
+        if optimizer is not None:
+            self.optimizer = optimizer
 
     def create_pairs(self, x0, y0, trans_pos="rotation", trans_neg="pgd"):
         """

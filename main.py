@@ -10,16 +10,14 @@ This is the implementation of paper: "SEAT: Similarity Encoder by Adversarial Tr
 We use the pretrain model downloaded from: https://github.com/huyvnphan/PyTorch_CIFAR10
 """
 
+import ops
 import random
 import numpy as np
 import os.path as osp
-import os, copy, shutil, zipfile, gdown
+import os, copy
 import torch
-import torchvision
-import torchvision.transforms as transforms
 import argparse
 import trans
-from models.vgg import vgg16_bn
 from tqdm import tqdm
 from seat import SEAT
 ROOT = osp.abspath(osp.dirname(__file__))
@@ -28,6 +26,7 @@ parser.add_argument("--device", type=int, default=0)
 parser.add_argument("--seed", type=int, default=999999)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--arch", type=str, default="vgg16_bn")
+parser.add_argument("--task", type=str, default="cifar10", choices=["MNIST", "CIFAR10", "mnist", "cifar10"])
 parser.add_argument("--data_root", default=osp.join(ROOT, "datasets/data"))
 parser.add_argument("--cpkt_root", default=osp.join(ROOT, "models/ckpt"))
 args = parser.parse_args()
@@ -40,43 +39,7 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
-def load_data(root="./datasets/data", batch_size=128):
-    mean = (0.43768206, 0.44376972, 0.47280434)
-    std = (0.19803014, 0.20101564, 0.19703615)
-    transform = transforms.Compose(
-        [transforms.ToTensor(),
-         transforms.Normalize(
-             (0.43768206, 0.44376972, 0.47280434), (0.19803014, 0.20101564, 0.19703615)
-         )]
-    )
-    train_set = torchvision.datasets.CIFAR10(root=root, train=True, download=True, transform=transform)
-    test_set = torchvision.datasets.CIFAR10(root=root, train=False, download=True, transform=transform)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=2)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=2)
-    bounds = trans.get_bounds(mean=mean, std=std)
-    return train_loader, test_loader, bounds
-
-
-def load_pretrained_encoder(arch):
-    local_root = osp.join(ROOT, "models")
-    target_file = osp.join(local_root, f"ckpt/{arch}.pt")
-    local_file = osp.join(local_root, "state_dicts.zip")
-    if not osp.exists(local_file):
-        print("-> Pretrained model not found!! download now...")
-        remote_url = "https://drive.google.com/u/0/uc?id=17fmN8eQdLpq2jIMQ_X0IXDPXfI9oVWgq&export=download"
-        gdown.download(remote_url, local_file, quiet=False)
-    if not osp.exists(target_file):
-        print("-> Unzip state_dicts.zip file...")
-        with zipfile.ZipFile(local_file, "r") as zip_ref:
-            zip_ref.extractall(local_root)
-            for file in os.listdir(osp.join(local_root, "state_dicts")):
-                source = osp.join(local_root, "state_dicts", file)
-                destination = osp.join(local_root, "ckpt", file)
-                shutil.move(source, destination)
-    return torch.load(target_file, map_location="cpu")
-
-
-def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
+def fine_tuning_encoder(seat, train_loader, epochs, arch="vgg16_bn"):
     """
     fine-tuning encoder using last layer of CNN feature maps as latent space of encoder
     :param seat: SEAT object
@@ -91,6 +54,9 @@ def fine_tuning_encoder(seat, train_loader, epochs=50, arch="vgg16_bn"):
         seat.encoder.load_state_dict(weights)
         return
 
+    if args.task.lower() == "mnist":
+        optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=5e-4, momentum=0.9, weight_decay=5e-4)
+        seat.reset(optimizer=optimizer)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(1, 1+epochs):
         path = osp.join(ROOT, f"models/ckpt/enc_{arch}.pt")
@@ -164,16 +130,15 @@ def main():
             pass
 
     print("""\n-> step1: load dataset""")
-    train_loader, test_loader, bounds = load_data(batch_size=args.batch_size)
+    train_loader, test_loader, bounds = ops.load_data(task=args.task, batch_size=args.batch_size)
 
     print("""\n-> step2: load pretrained encoder""")
-    load_pretrained_encoder(arch=args.arch)
-    encoder = vgg16_bn(pretrained=True)
+    encoder = ops.load_model(arch=args.arch)
     encoder.to(args.device)
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
-    seat = SEAT(encoder, bounds=bounds, threshold_score=0.2, delta=1e-5)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50, arch=args.arch)
+    seat = SEAT(encoder, bounds=bounds, score_threshold=0.92, delta=1e-5)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=40, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

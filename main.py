@@ -56,7 +56,7 @@ def fine_tuning_encoder(seat, train_loader, epochs, arch="vgg16_bn"):
         return
 
     if args.task.lower() == "mnist":
-        optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=5e-4, momentum=0.9, weight_decay=5e-4)
+        optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=1e-5, momentum=0.9, weight_decay=5e-4)
         seat.reset(optimizer=optimizer)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(1, 1+epochs):
@@ -108,8 +108,8 @@ def evaluate_SEAT(seat, test_loader):
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
         x0 = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
         alarm, pred, dist = seat.query(x0)
-        TN += 0 if alarm else 1
-        FP += 1 if alarm else 0
+        TN += 1 if alarm else 0
+        FP += 0 if alarm else 1
         scores = round(100.0*(1.0-seat.count/len(x0)), 5)
         pbar.set_description(
              f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
@@ -131,14 +131,14 @@ def main():
             pass
 
     print("""\n-> step1: load dataset""")
-    train_loader, test_loader, bounds = ops.load_data(task=args.task, batch_size=args.batch_size)
+    train_loader, test_loader, bounds = ops.load_data(task=args.task, batch_size=args.batch_size, query_size=args.query_size)
 
     print("""\n-> step2: load pretrained encoder""")
     encoder = ops.load_model(arch=args.arch)
     encoder.to(args.device)
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
-    seat = SEAT(encoder, bounds=bounds, score_threshold=0.96, delta=1e-5)
+    seat = SEAT(encoder, bounds=bounds, score_threshold=0.92, delta=1e-5)
     fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=30, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")

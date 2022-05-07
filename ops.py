@@ -4,12 +4,6 @@
 __author__ = 'homeway'
 __copyright__ = 'Copyright © 2022/04/18, homeway'
 
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-
-__author__ = 'homeway'
-__copyright__ = 'Copyright © 2022/05/07, homeway'
-
 
 import trans
 import torchvision

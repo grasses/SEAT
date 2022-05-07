@@ -55,7 +55,7 @@ def fine_tuning_encoder(seat, train_loader, epochs, arch="vgg16_bn"):
         seat.encoder.load_state_dict(weights)
         return
 
-    if args.task.lower() == "mnist":
+    if "mnist" in args.task.lower():
         optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=5e-5, momentum=0.9, weight_decay=5e-4)
         seat.reset(optimizer=optimizer)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)

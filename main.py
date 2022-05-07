@@ -47,7 +47,7 @@ def fine_tuning_encoder(seat, train_loader, epochs, arch="vgg16_bn"):
     :param epochs:
     :return: None
     """
-    path = osp.join(ROOT, f"models/ckpt/enc_{arch}.pt")
+    path = osp.join(ROOT, f"models/ckpt/enc_{arch}_{epochs}.pt")
     if osp.exists(path):
         print(f"-> load pretrained encoder from: {path}\n")
         weights = torch.load(path, map_location=args.device)

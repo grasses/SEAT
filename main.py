@@ -94,7 +94,7 @@ def evaluate_SEAT(seat, test_loader):
         alarm, pred, dist = seat.query(x0)
         FN += np.sum(pred)
         TP += (len(x0) - np.sum(pred))
-        scores = round(100.0*seat.count/len(x0), 5)
+        scores = round(100.0*(1.0-seat.count/len(x0)), 5)
         pbar.set_description(
             f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
 
@@ -109,7 +109,7 @@ def evaluate_SEAT(seat, test_loader):
         alarm, pred, dist = seat.query(x0)
         TN += np.sum(pred)
         FP += (len(x0) - np.sum(pred))
-        scores = round(100.0 * seat.count / len(x0), 5)
+        scores = round(100.0*(1.0-seat.count/len(x0)), 5)
         pbar.set_description(
              f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
 
@@ -138,7 +138,7 @@ def main():
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds, score_threshold=0.92, delta=1e-5)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=40, arch=args.arch)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=30, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

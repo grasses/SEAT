@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=int, default=0)
 parser.add_argument("--seed", type=int, default=999999)
 parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--query_size", type=int, default=1000)
 parser.add_argument("--arch", type=str, default="vgg16_bn")
 parser.add_argument("--task", type=str, default="cifar10", choices=["MNIST", "CIFAR10", "mnist", "cifar10"])
 parser.add_argument("--data_root", default=osp.join(ROOT, "datasets/data"))
@@ -92,8 +93,8 @@ def evaluate_SEAT(seat, test_loader):
     for step, (x, y) in pbar:
         x0 = x.to(args.device)
         alarm, pred, dist = seat.query(x0)
-        FN += np.sum(pred)
-        TP += (len(x0) - np.sum(pred))
+        FN += 1 if alarm else 0
+        TP += 0 if alarm else 1
         scores = round(100.0*(1.0-seat.count/len(x0)), 5)
         pbar.set_description(
             f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
@@ -107,8 +108,8 @@ def evaluate_SEAT(seat, test_loader):
         y = torch.randint(0, 10, list(y.shape)).to(args.device)
         x0 = adv.pgd(x, y, eps=40./255., alpha=40./255., steps=30, random_start=True)
         alarm, pred, dist = seat.query(x0)
-        TN += np.sum(pred)
-        FP += (len(x0) - np.sum(pred))
+        TN += 0 if alarm else 1
+        FP += 1 if alarm else 0
         scores = round(100.0*(1.0-seat.count/len(x0)), 5)
         pbar.set_description(
              f"-> [{step}/{size}] adv_query_count:[{seat.count}/{len(x0)}] conf_score:{scores}%")
@@ -137,7 +138,7 @@ def main():
     encoder.to(args.device)
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
-    seat = SEAT(encoder, bounds=bounds, score_threshold=0.92, delta=1e-5)
+    seat = SEAT(encoder, bounds=bounds, score_threshold=0.96, delta=1e-5)
     fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=30, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")

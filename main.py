@@ -56,7 +56,7 @@ def fine_tuning_encoder(seat, train_loader, epochs, arch="vgg16_bn"):
         return
 
     if args.task.lower() == "mnist":
-        optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=1e-5, momentum=0.9, weight_decay=5e-4)
+        optimizer = torch.optim.SGD(seat.encoder.parameters(), lr=5e-5, momentum=0.9, weight_decay=5e-4)
         seat.reset(optimizer=optimizer)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(seat.optimizer, T_max=epochs)
     for epoch in range(1, 1+epochs):
@@ -139,7 +139,7 @@ def main():
 
     print("""\n-> step3: fine-tuning similarity encoder with contrastive loss""")
     seat = SEAT(encoder, bounds=bounds, score_threshold=0.92, delta=1e-5)
-    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=30, arch=args.arch)
+    fine_tuning_encoder(seat=seat, train_loader=train_loader, epochs=50, arch=args.arch)
 
     print("""\n-> step4: evaluate similarity encoder""")
     evaluate_SEAT(seat=seat, test_loader=test_loader)

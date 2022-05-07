@@ -30,6 +30,11 @@ python3 main.py --arch vgg16_bn --task cifar10
 ```
 </details>
 
+
+Result preview for CIFAR10:
+
+![Result for CIFAR10](https://raw.githubusercontent.com/grasses/SEAT/master/exp/figure2.png)
+
 <br>
 
 <details>
